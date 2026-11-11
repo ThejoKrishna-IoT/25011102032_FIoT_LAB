@@ -1,67 +1,102 @@
 #include "main.h"
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
-static uint8_t esp_rx;
-static char esp_line[256];
-static uint16_t esp_pos;
+static uint8_t rx;
+static char input[512];
+static volatile uint16_t input_len;
+static volatile uint8_t line_ready;
 
 static void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_USART3_UART_Init(void);
-static void uart_send(UART_HandleTypeDef *u, const char *s);
-static void esp_command(const char *cmd, uint32_t wait_ms);
+static void send_uart(UART_HandleTypeDef *u, const char *s);
+static void send_at(const char *s, uint32_t delay_ms);
+static void serve_http(void);
 
 int main(void)
 {
     HAL_Init();
     SystemClock_Config();
-    MX_GPIO_Init();
     MX_USART2_UART_Init();
     MX_USART3_UART_Init();
+    HAL_UART_Receive_IT(&huart3, &rx, 1);
 
-    HAL_UART_Receive_IT(&huart3, &esp_rx, 1);
-    uart_send(&huart2, "\r\nCAT10 STM32-Wemos AT interface\r\n");
+    send_at("AT\r\n", 1000);
+    send_at("AT+CWMODE=1\r\n", 1000);
+    send_at("AT+CIPMUX=1\r\n", 1000);
+    send_at("AT+CIPSERVER=1,80\r\n", 1000);
+    send_uart(&huart2, "\r\nHTTP server configured on ESP8266 port 80.\r\n");
 
-    esp_command("AT\r\n", 1000);
-    esp_command("AT+GMR\r\n", 1000);
-    esp_command("AT+CWMODE=1\r\n", 1000);
-    esp_command("AT+CWLAP\r\n", 8000);
-
-    uart_send(&huart2, "\r\nEnter Wi-Fi command as AT command in this terminal.\r\n");
-    while (1) {}
+    while (1)
+    {
+        if (line_ready)
+        {
+            __disable_irq();
+            line_ready = 0;
+            input_len = 0;
+            __enable_irq();
+            serve_http();
+        }
+    }
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart->Instance == USART3)
     {
-        HAL_UART_Transmit(&huart2, &esp_rx, 1, 100);
-        if (esp_pos < sizeof(esp_line) - 1U)
-            esp_line[esp_pos++] = (char)esp_rx;
-        if (esp_rx == '\n' || esp_pos >= sizeof(esp_line) - 1U)
+        if (input_len < sizeof(input) - 1U)
         {
-            esp_line[esp_pos] = '\0';
-            esp_pos = 0;
+            input[input_len++] = (char)rx;
+            if (input_len >= 5U && strstr(input, "+IPD,") != NULL &&
+                (strstr(input, "GET /") != NULL || strstr(input, "POST /") != NULL))
+                line_ready = 1;
         }
-        HAL_UART_Receive_IT(&huart3, &esp_rx, 1);
+        else
+        {
+            input_len = 0;
+        }
+        HAL_UART_Receive_IT(&huart3, &rx, 1);
     }
 }
 
-static void esp_command(const char *cmd, uint32_t wait_ms)
+static void serve_http(void)
 {
-    uart_send(&huart2, "STM32 -> Wemos: ");
-    uart_send(&huart2, cmd);
-    uart_send(&huart3, cmd);
-    HAL_Delay(wait_ms);
+    char *p = strstr(input, "+IPD,");
+    int link_id = 0;
+    if (p == NULL) return;
+    if (sscanf(p, "+IPD,%d,", &link_id) != 1) return;
+
+    const char body[] = "<html><body><h1>STM32 IoT Node</h1><p>Hello from STM32</p></body></html>";
+    char response[256];
+    char command[40];
+    int body_len = (int)strlen(body);
+    int response_len = snprintf(response, sizeof(response),
+        "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s",
+        body_len, body);
+    if (response_len <= 0 || response_len >= (int)sizeof(response)) return;
+
+    snprintf(command, sizeof(command), "AT+CIPSEND=%d,%d\r\n", link_id, response_len);
+    send_uart(&huart3, command);
+    HAL_Delay(300);
+    send_uart(&huart3, response);
+    HAL_Delay(300);
+    snprintf(command, sizeof(command), "AT+CIPCLOSE=%d\r\n", link_id);
+    send_uart(&huart3, command);
+    send_uart(&huart2, "Served HTTP GET request.\r\n");
 }
 
-static void uart_send(UART_HandleTypeDef *u, const char *s)
+static void send_at(const char *s, uint32_t delay_ms)
 {
-    HAL_UART_Transmit(u, (uint8_t *)s, strlen(s), 2000);
+    send_uart(&huart3, s);
+    HAL_Delay(delay_ms);
+}
+
+static void send_uart(UART_HandleTypeDef *u, const char *s)
+{
+    HAL_UART_Transmit(u, (uint8_t *)s, strlen(s), 3000);
 }
 
 static void MX_USART2_UART_Init(void)
@@ -107,12 +142,6 @@ static void MX_USART3_UART_Init(void)
 void USART3_IRQHandler(void)
 {
     HAL_UART_IRQHandler(&huart3);
-}
-
-static void MX_GPIO_Init(void)
-{
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    __HAL_RCC_GPIOB_CLK_ENABLE();
 }
 
 static void SystemClock_Config(void)
