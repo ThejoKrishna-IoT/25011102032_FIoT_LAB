@@ -1,0 +1,29 @@
+#Project Structure and Toolchain Configuration File
+#
+#User-defined configurations
+[PreviousUsedToolchain]
+Keil=MDK-ARM V5
+[Core]
+Core=ARM Cortex-M4
+[Family]
+Family=STM32F4
+[DeviceId]
+DeviceId=STM32F401RETx
+[Package]
+Package=LQFP64
+[Project]
+ProjectName=TASK12A
+ProjectNature=C
+Toolchain=MDK-ARM V5
+[Files]
+[ProjectFiles]
+Core/Src/main.c
+Core/Src/stm32f4xx_it.c
+Core/Src/stm32f4xx_hal_msp.c
+Core/Src/system_stm32f4xx.c
+[ProjectIncludes]
+Core/Inc
+Drivers/STM32F4xx_HAL_Driver/Inc
+Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
+Drivers/CMSIS/Device/ST/STM32F4xx/Include
+Drivers/CMSIS/Include
