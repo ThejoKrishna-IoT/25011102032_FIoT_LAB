@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<Project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="project_proj.xsd">
+  <SchemaVersion>1.1</SchemaVersion>
+  <Header>### uVision Project, (C) Keil Software</Header>
+  <Targets>
+    <Target>
+      <TargetName>Target 1</TargetName>
+      <ToolsetNumber>0x0</ToolsetNumber>
+      <ToolsetName>MCS-51</ToolsetName>
+      <TargetOption>
+        <TargetCommonOption>
+          <Device>AT89S52</Device>
+          <Vendor>Microchip</Vendor>
+          <Cpu>IRAM(0-0xFF) IROM(0-0x1FFF) CLOCK(11059200) MODP2</Cpu>
+          <DeviceId>3411</DeviceId>
+          <RegisterFile>REGX52.H</RegisterFile>
+          <OutputDirectory>.\Objects\</OutputDirectory>
+          <OutputName>TASK_7B</OutputName>
+          <CreateExecutable>1</CreateExecutable>
+          <CreateLib>0</CreateLib>
+          <CreateHexFile>1</CreateHexFile>
+          <DebugInformation>1</DebugInformation>
+          <BrowseInformation>1</BrowseInformation>
+          <ListingPath>.\Listings\</ListingPath>
+        </TargetCommonOption>
+      </TargetOption>
+      <Groups>
+        <Group>
+          <GroupName>Source Group 1</GroupName>
+          <Files>
+            <File>
+              <FileName>STARTUP.A51</FileName>
+              <FileType>2</FileType>
+              <FilePath>.\STARTUP.A51</FilePath>
+            </File>
+            <File>
+              <FileName>lcd.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\lcd.c</FilePath>
+            </File>
+            <File>
+              <FileName>keypad.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\keypad.c</FilePath>
+            </File>
+            <File>
+              <FileName>main.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\main.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+      </Groups>
+    </Target>
+  </Targets>
+</Project>
